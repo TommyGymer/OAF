@@ -20,7 +20,19 @@ struct Session {
 
 impl Serialisable for Session {
     fn serialise(&self) -> Vec<u8> {
-        todo!()
+        let mut res = vec!();
+
+        res.append(&mut usize_as_u16_as_bytes(self.date.as_bytes().len()));
+        res.extend_from_slice(self.date.as_bytes());
+
+        res.append(&mut usize_as_u16_as_bytes(self.location.as_bytes().len()));
+        res.extend_from_slice(self.location.as_bytes());
+
+        for round in self.rounds {
+            res.append(&mut round.serialise());
+        }
+
+        res
     }
 }
 
