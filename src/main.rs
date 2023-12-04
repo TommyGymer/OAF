@@ -1,93 +1,9 @@
 // structs should implement the Binary trait
 
+mod buffer;
+use crate::buffer::Buffer;
+
 // use std::io::Read;
-
-fn usize_as_u16_as_bytes(len: usize) -> Vec<u8> {
-    //TODO: check if the len is >= 2^16
-    (len as u16).to_le_bytes().to_vec()
-}
-
-#[derive(Debug)]
-struct Buffer {
-    v: Vec<u8>,
-}
-
-impl PartialEq<Self> for Buffer {
-    fn eq(&self, other: &Self) -> bool {
-        self.v == other.v
-    }
-}
-
-impl PartialEq<Vec<u8>> for Buffer {
-    fn eq(&self, other: &Vec<u8>) -> bool {
-        self.v == *other
-    }
-}
-
-impl Buffer {
-    fn new() -> Buffer {
-        Buffer {
-            v: vec!(),
-        }
-    }
-
-    fn append_usize(&mut self, len: usize) {
-        self.v.append(&mut usize_as_u16_as_bytes(len));
-    }
-
-    fn append_string(&mut self, str: &String) {
-        let b = str.as_bytes();
-        self.append_usize(b.len());
-        self.v.extend_from_slice(b);
-    }
-
-    fn append(&mut self, b: &mut Buffer) {
-        self.v.append(&mut b.v);
-    }
-
-    fn append_u32(&mut self, n: u32) {
-        self.v.extend_from_slice(&n.to_le_bytes());
-    }
-
-    fn append_f32(&mut self, n: f32) {
-        self.v.extend_from_slice(&n.to_le_bytes());
-    }
-
-    fn append_u8(&mut self, n: u8) {
-        self.v.extend_from_slice(&n.to_le_bytes());
-    }
-
-    fn pop_n_bytes(&mut self, n: usize) -> Vec<u8> {
-        let mut res = vec![];
-
-        for i in 0..n {
-            res.push(*self.v.get(i).unwrap());
-        }
-        self.v = self.v.split_at(res.len()).1.to_vec();
-        res
-    }
-
-    fn pop_usize(&mut self) -> usize {
-        u16::from_le_bytes(self.pop_n_bytes(2).try_into().unwrap()) as usize
-    }
-
-    fn pop_string(&mut self) -> String {
-        let len = self.pop_usize();
-        String::from_utf8(self.pop_n_bytes(len)).unwrap()
-    }
-
-    fn pop_u32(&mut self) -> u32 {
-        u32::from_le_bytes(self.pop_n_bytes(4).try_into().unwrap())
-    }
-
-    fn pop_f32(&mut self) -> f32 {
-        f32::from_le_bytes(self.pop_n_bytes(4).try_into().unwrap())
-    }
-
-    fn pop_u8(&mut self) -> u8 {
-        u8::from_le_bytes(self.pop_n_bytes(1).try_into().unwrap())
-    }
-}
 
 trait Serialisable {
     fn serialise(&self) -> Buffer;
@@ -223,9 +139,7 @@ impl Serialisable for End {
     fn serialise(&self) -> Buffer {
         match self {
             End::ScoredEnd(ends) => {
-                let mut res = Buffer {
-                    v: vec![0],
-                };
+                let mut res = Buffer::from(vec![0]);
 
                 res.append_usize(ends.len());
                 for score in ends {
@@ -235,9 +149,7 @@ impl Serialisable for End {
                 res
             },
             End::MeasuredEnd(ends) => {
-                let mut res = Buffer {
-                    v: vec![1],
-                };
+                let mut res = Buffer::from(vec![1]);
 
                 res.append_usize(ends.len());
                 for score in ends {
@@ -297,9 +209,7 @@ struct MeasuredScore {
 
 impl Serialisable for ValueScore {
     fn serialise(&self) -> Buffer {
-        let mut res = Buffer {
-            v: vec![self.value]
-        };
+        let mut res = Buffer::from(vec![self.value]);
 
         res.append_string(&self.value_name);
 
@@ -316,9 +226,7 @@ impl Serialisable for ValueScore {
 
 impl Serialisable for MeasuredScore {
     fn serialise(&self) -> Buffer {
-        let mut res = Buffer {
-            v: vec![self.value]
-        };
+        let mut res = Buffer::from(vec![self.value]);
 
         res.append_string(&self.value_name);
 
@@ -373,63 +281,6 @@ fn main() {
 
 
 #[cfg(test)]
-mod buffer_tests {
-    use super::*;
-
-    #[test]
-    fn test_buffer_usize() {
-        let mut buf = Buffer::new();
-        buf.append_usize(5);
-
-        assert_eq!(5, buf.pop_usize());
-    }
-
-    #[test]
-    fn test_buffer_string() {
-        let mut buf = Buffer::new();
-        buf.append_string(&"test".to_string());
-
-        assert_eq!("test", buf.pop_string());
-    }
-
-    #[test]
-    fn test_buffer_u32() {
-        let mut buf = Buffer::new();
-        buf.append_u32(7);
-
-        assert_eq!(7, buf.pop_u32());
-    }
-
-    #[test]
-    fn test_buffer_f32() {
-        let mut buf = Buffer::new();
-        buf.append_f32(7.0);
-
-        assert_eq!(7.0, buf.pop_f32());
-    }
-
-    #[test]
-    fn test_buffer_u8() {
-        let mut buf = Buffer::new();
-        buf.append_u8(15);
-
-        assert_eq!(15, buf.pop_u8());
-    }
-
-    #[test]
-    fn test_buffer_buffer() {
-        let mut buf = Buffer::new();
-        let mut other = Buffer {
-            v: vec![1,2,3,4],
-        };
-
-        buf.append(&mut other);
-
-        assert_eq!(vec![1,2,3], buf.pop_n_bytes(3));
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -442,14 +293,14 @@ mod tests {
             theta: 6000,
         }.serialise();
         assert_eq!(
-            data.v,
-            [7, 5, 0, 115, 101, 118, 101, 110, 255, 0, 0, 0, 112, 23, 0, 0]
+            data,
+            vec![7, 5, 0, 115, 101, 118, 101, 110, 255, 0, 0, 0, 112, 23, 0, 0]
         )
     }
 
     #[test]
     fn test_measured_score_deserialise() {
-        let data = MeasuredScore::deserialise(&mut Buffer { v: vec![7, 5, 0, 115, 101, 118, 101, 110, 255, 0, 0, 0, 112, 23, 0, 0] } );
+        let data = MeasuredScore::deserialise(&mut Buffer::from(vec![7, 5, 0, 115, 101, 118, 101, 110, 255, 0, 0, 0, 112, 23, 0, 0]));
         let s = MeasuredScore {
             value: 7,
             value_name: "seven".to_string(),
@@ -476,7 +327,7 @@ mod tests {
 
     #[test]
     fn test_value_score_deserialise() {
-        let data = ValueScore::deserialise(&mut Buffer { v: vec![7, 5, 0, 115, 101, 118, 101, 110] } );
+        let data = ValueScore::deserialise(&mut Buffer::from(vec![7, 5, 0, 115, 101, 118, 101, 110]));
         let s = ValueScore {
             value: 7,
             value_name: "seven".to_string(),
@@ -522,13 +373,13 @@ mod tests {
     #[test]
     fn test_measured_end_deserialise() {
         let data = End::deserialise(
-            &mut Buffer {
-                v: vec![1, 3, 0,
+            &mut Buffer::from(
+                vec![1, 3, 0,
                         7, 5, 0, 115, 101, 118, 101, 110, 255, 0, 0, 0, 112, 23, 0, 0,
                         6, 3, 0, 115, 105, 120, 232, 3, 0, 0, 184, 11, 0, 0,
                         5, 4, 0, 102, 105, 118, 101, 220, 5, 0, 0, 50, 0, 0, 0,
                 ]
-            } );
+            ));
         let s = End::MeasuredEnd( vec![
             MeasuredScore {
                 value: 7,
@@ -583,13 +434,13 @@ mod tests {
     #[test]
     fn test_value_end_deserialise() {
         let data = End::deserialise(
-            &mut Buffer {
-                v: vec![0, 3, 0,
+            &mut Buffer::from(
+                vec![0, 3, 0,
                         7, 5, 0, 115, 101, 118, 101, 110,
                         6, 3, 0, 115, 105, 120,
                         5, 4, 0, 102, 105, 118, 101,
                 ]
-            } );
+            ));
         let s = End::ScoredEnd( vec![
             ValueScore {
                 value: 7,
