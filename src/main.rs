@@ -176,29 +176,17 @@ impl Serialisable for Target {
 
     fn deserialise(data: &mut Buffer) -> Self {
         let name = data.pop_string();
-        // let name_len = u16::from_le_bytes(data[1..=2].try_into().unwrap());
-        // let name = String::from_utf8(data[3..(3 + name_len) as usize].to_vec())
-        //     .unwrap_or("".to_string());
 
         let dist = data.pop_u32();
         let dist_unit = data.pop_string();
-        // let dist = u32::from_le_bytes(data[(3 + name_len) as usize..(3 + name_len + 4) as usize].try_into().unwrap());
-        // let dist_unit_len = u16::from_le_bytes(data[(3 + name_len + 4) as usize..(3 + name_len + 4 + 2) as usize].try_into().unwrap());
-        // let dist_unit = String::from_utf8(data[(3 + name_len + 4 + 2) as usize..(3 + name_len + 4 + 2 + dist_unit_len) as usize].to_vec())
-        //     .unwrap_or("".to_string());
 
         let face = data.pop_u32();
         let face_unit = data.pop_string();
-        // let face = u32::from_le_bytes(data[(3 + name_len + 4 + 2 + dist_unit_len) as usize..(3 + name_len + 4 + 2 + dist_unit_len + 4) as usize].try_into().unwrap());
-        // let face_unit_len = u16::from_le_bytes(data[(3 + name_len + 4 + 2 + dist_unit_len + 4) as usize..(3 + name_len + 4 + 2 + dist_unit_len + 4 + 2) as usize].try_into().unwrap());
-        // let face_unit = String::from_utf8(data[(3 + name_len + 4 + 2 + dist_unit_len + 4 + 2) as usize..(3 + name_len + 4 + 2 + dist_unit_len + 4 + 2 + face_unit_len) as usize].to_vec())
-        //     .unwrap_or("".to_string());
 
         let inclination = data.pop_u32();
-        // let inclination = u32::from_le_bytes(data[(3 + name_len + 4 + 2 + dist_unit_len + 4 + 2 + face_unit_len) as usize..(3 + name_len + 4 + 2 + dist_unit_len + 4 + 2 + face_unit_len + 4) as usize].try_into().unwrap());
 
         let mut ends = vec![];
-        let mut read = data.pop_usize();
+        let read = data.pop_usize();
 
         for _ in 0..read {
             let s = End::deserialise(data);
@@ -258,7 +246,7 @@ impl Serialisable for End {
         match t {
             0 => {
                 let mut scores = vec![];
-                let mut read = data.pop_usize();
+                let read = data.pop_usize();
 
                 for _ in 0..read {
                     let s = ValueScore::deserialise(data);
@@ -269,7 +257,7 @@ impl Serialisable for End {
             },
             1 => {
                 let mut scores = vec![];
-                let mut read = data.pop_usize();
+                let read = data.pop_usize();
 
                 for _ in 0..read {
                     let s = MeasuredScore::deserialise(data);
