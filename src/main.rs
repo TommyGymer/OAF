@@ -10,7 +10,7 @@ trait Serialisable {
     fn deserialise(data: &mut Buffer) -> Self;
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct Session {
     date: String,
     location: String,
@@ -36,11 +36,25 @@ impl Serialisable for Session {
     }
 
     fn deserialise(data: &mut Buffer) -> Self {
-        todo!()
+        let date = data.pop_string();
+        let location = data.pop_string();
+
+        let mut rounds = vec![];
+        let read = data.pop_usize();
+
+        for _ in 0..read {
+            rounds.push(Round::deserialise(data));
+        }
+
+        Session {
+            date,
+            location,
+            rounds,
+        }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct Round {
     name: String,
     targets: Vec<Target>,
@@ -61,11 +75,23 @@ impl Serialisable for Round {
     }
 
     fn deserialise(data: &mut Buffer) -> Self {
-        todo!()
+        let name = data.pop_string();
+
+        let mut targets = vec![];
+        let read = data.pop_usize();
+
+        for _ in 0..read {
+            targets.push(Target::deserialise(data));
+        }
+
+        Round {
+            name,
+            targets,
+        }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct Target {
     name: String,
     distance: u32,
@@ -113,8 +139,7 @@ impl Serialisable for Target {
         let read = data.pop_usize();
 
         for _ in 0..read {
-            let s = End::deserialise(data);
-            ends.push(s);
+            ends.push(End::deserialise(data));
         }
 
         Target {
@@ -283,6 +308,61 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_full() {
+        let s = Session {
+            date: "4/12/2023".to_string(),
+            location: "St Andrews".to_string(),
+            rounds: vec![
+                Round {
+                    name: "Portsmouth".to_string(),
+                    targets: vec![
+                        Target {
+                            name: "WA 60cm Indoor".to_string(),
+                            distance: 18,
+                            distance_unit: "m".to_string(),
+                            face_size: 60,
+                            face_size_unit: "cm".to_string(),
+                            inclination: 0,
+                            ends: vec![
+                                End::ScoredEnd(vec![
+                                    ValueScore {
+                                        value: 10,
+                                        value_name: "10".to_string(),
+                                    },
+                                    ValueScore {
+                                        value: 10,
+                                        value_name: "10".to_string(),
+                                    },
+                                    ValueScore {
+                                        value: 9,
+                                        value_name: "9".to_string(),
+                                    }
+                                ]),
+                                End::ScoredEnd(vec![
+                                    ValueScore {
+                                        value: 10,
+                                        value_name: "10".to_string(),
+                                    },
+                                    ValueScore {
+                                        value: 9,
+                                        value_name: "9".to_string(),
+                                    },
+                                    ValueScore {
+                                        value: 9,
+                                        value_name: "9".to_string(),
+                                    }
+                                ])
+                            ],
+                        }
+                    ],
+                }
+            ],
+        };
+
+        assert_eq!(s, Session::deserialise(&mut s.serialise()))
+    }
 
     #[test]
     fn test_measured_score_serialise() {
