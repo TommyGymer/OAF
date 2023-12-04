@@ -401,6 +401,14 @@ mod buffer_tests {
     }
 
     #[test]
+    fn test_buffer_f32() {
+        let mut buf = Buffer::new();
+        buf.append_f32(7.0);
+
+        assert_eq!(7.0, buf.pop_f32());
+    }
+
+    #[test]
     fn test_buffer_u8() {
         let mut buf = Buffer::new();
         buf.append_u8(15);
