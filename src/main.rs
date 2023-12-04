@@ -53,6 +53,10 @@ impl Buffer {
         self.v.extend_from_slice(&n.to_le_bytes());
     }
 
+    fn append_u8(&mut self, n: u8) {
+        self.v.extend_from_slice(&n.to_le_bytes());
+    }
+
     fn pop_n_bytes(&mut self, n: usize) -> Vec<u8> {
         let mut res = vec![];
 
@@ -74,6 +78,10 @@ impl Buffer {
 
     fn pop_u32(&mut self) -> u32 {
         u32::from_le_bytes(self.pop_n_bytes(4).try_into().unwrap())
+    }
+
+    fn pop_f32(&mut self) -> f32 {
+        f32::from_le_bytes(self.pop_n_bytes(4).try_into().unwrap())
     }
 
     fn pop_u8(&mut self) -> u8 {
@@ -363,6 +371,55 @@ fn main() {
 }
 
 
+
+#[cfg(test)]
+mod buffer_tests {
+    use super::*;
+
+    #[test]
+    fn test_buffer_usize() {
+        let mut buf = Buffer::new();
+        buf.append_usize(5);
+
+        assert_eq!(5, buf.pop_usize());
+    }
+
+    #[test]
+    fn test_buffer_string() {
+        let mut buf = Buffer::new();
+        buf.append_string(&"test".to_string());
+
+        assert_eq!("test", buf.pop_string());
+    }
+
+    #[test]
+    fn test_buffer_u32() {
+        let mut buf = Buffer::new();
+        buf.append_u32(7);
+
+        assert_eq!(7, buf.pop_u32());
+    }
+
+    #[test]
+    fn test_buffer_u8() {
+        let mut buf = Buffer::new();
+        buf.append_u8(15);
+
+        assert_eq!(15, buf.pop_u8());
+    }
+
+    #[test]
+    fn test_buffer_buffer() {
+        let mut buf = Buffer::new();
+        let mut other = Buffer {
+            v: vec![1,2,3,4],
+        };
+
+        buf.append(&mut other);
+
+        assert_eq!(vec![1,2,3], buf.pop_n_bytes(3));
+    }
+}
 
 #[cfg(test)]
 mod tests {
