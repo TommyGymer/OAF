@@ -1,11 +1,9 @@
-use std::error::Error;
 use std::string::FromUtf8Error;
 
 #[derive(Debug, Clone)]
 pub enum BufferError {
     BufferEmpty,
     InvalidUtf8String(FromUtf8Error),
-    TryInto,
     UsizeTooBig,
 }
 
@@ -133,7 +131,7 @@ mod buffer_tests {
     #[test]
     fn test_buffer_string() {
         let mut buf = Buffer::new();
-        buf.append_string(&"test".to_string());
+        buf.append_string(&"test".to_string()).unwrap();
 
         assert_eq!("test", buf.pop_string().unwrap());
     }

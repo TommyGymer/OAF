@@ -21,9 +21,9 @@ impl Serialisable<Session> for Session {
     fn serialise(&self) -> Result<Buffer, BufferError> {
         let mut res = Buffer::new();
 
-        res.append_string(&self.date);
+        res.append_string(&self.date)?;
 
-        res.append_string(&self.location);
+        res.append_string(&self.location)?;
 
         res.append_usize(self.rounds.len())?;
         for round in &self.rounds {
@@ -62,7 +62,7 @@ impl Serialisable<Round> for Round {
     fn serialise(&self) -> Result<Buffer, BufferError> {
         let mut res = Buffer::new();
 
-        res.append_string(&self.name);
+        res.append_string(&self.name)?;
 
         res.append_usize(self.targets.len())?;
         for target in &self.targets {
@@ -104,13 +104,13 @@ impl Serialisable<Target> for Target {
     fn serialise(&self) -> Result<Buffer, BufferError> {
         let mut res = Buffer::new();
 
-        res.append_string(&self.name);
+        res.append_string(&self.name)?;
 
         res.append_u32(self.distance);
-        res.append_string(&self.distance_unit);
+        res.append_string(&self.distance_unit)?;
 
         res.append_u32(self.face_size);
-        res.append_string(&self.face_size_unit);
+        res.append_string(&self.face_size_unit)?;
 
         res.append_u32(self.inclination);
 
@@ -234,7 +234,7 @@ impl Serialisable<ValueScore> for ValueScore {
     fn serialise(&self) -> Result<Buffer, BufferError> {
         let mut res = Buffer::from(vec![self.value]);
 
-        res.append_string(&self.value_name);
+        res.append_string(&self.value_name)?;
 
         Ok(res)
     }
@@ -251,7 +251,7 @@ impl Serialisable<MeasuredScore> for MeasuredScore {
     fn serialise(&self) -> Result<Buffer, BufferError> {
         let mut res = Buffer::from(vec![self.value]);
 
-        res.append_string(&self.value_name);
+        res.append_string(&self.value_name)?;
 
         res.append_u32(self.r);
         res.append_u32(self.theta);
