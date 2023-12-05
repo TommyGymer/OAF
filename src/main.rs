@@ -1,13 +1,11 @@
 // structs should implement the Binary trait
 
 mod buffer;
-use crate::buffer::Buffer;
+use crate::buffer::{Buffer, BufferError};
 
-// use std::io::Read;
-
-trait Serialisable {
-    fn serialise(&self) -> Buffer;
-    fn deserialise(data: &mut Buffer) -> Self;
+trait Serialisable<T> {
+    fn serialise(&self) -> Result<Buffer, BufferError>;
+    fn deserialise(data: &mut Buffer) -> Result<T, BufferError>;
 }
 
 #[derive(Debug, PartialEq)]
@@ -19,38 +17,38 @@ struct Session {
     rounds: Vec<Round>,
 }
 
-impl Serialisable for Session {
-    fn serialise(&self) -> Buffer {
+impl Serialisable<Session> for Session {
+    fn serialise(&self) -> Result<Buffer, BufferError> {
         let mut res = Buffer::new();
 
         res.append_string(&self.date);
 
         res.append_string(&self.location);
 
-        res.append_usize(self.rounds.len());
+        res.append_usize(self.rounds.len())?;
         for round in &self.rounds {
-            res.append(&mut round.serialise());
+            res.append(&mut round.serialise()?);
         }
 
-        res
+        Ok(res)
     }
 
-    fn deserialise(data: &mut Buffer) -> Self {
-        let date = data.pop_string();
-        let location = data.pop_string();
+    fn deserialise(data: &mut Buffer) -> Result<Self, BufferError> {
+        let date = data.pop_string()?;
+        let location = data.pop_string()?;
 
         let mut rounds = vec![];
-        let read = data.pop_usize();
+        let read = data.pop_usize()?;
 
         for _ in 0..read {
-            rounds.push(Round::deserialise(data));
+            rounds.push(Round::deserialise(data)?);
         }
 
-        Session {
+        Ok(Session {
             date,
             location,
             rounds,
-        }
+        })
     }
 }
 
@@ -60,34 +58,34 @@ struct Round {
     targets: Vec<Target>,
 }
 
-impl Serialisable for Round {
-    fn serialise(&self) -> Buffer {
+impl Serialisable<Round> for Round {
+    fn serialise(&self) -> Result<Buffer, BufferError> {
         let mut res = Buffer::new();
 
         res.append_string(&self.name);
 
-        res.append_usize(self.targets.len());
+        res.append_usize(self.targets.len())?;
         for target in &self.targets {
-            res.append(&mut target.serialise());
+            res.append(&mut target.serialise()?);
         }
 
-        res
+        Ok(res)
     }
 
-    fn deserialise(data: &mut Buffer) -> Self {
-        let name = data.pop_string();
+    fn deserialise(data: &mut Buffer) -> Result<Self, BufferError> {
+        let name = data.pop_string()?;
 
         let mut targets = vec![];
-        let read = data.pop_usize();
+        let read = data.pop_usize()?;
 
         for _ in 0..read {
-            targets.push(Target::deserialise(data));
+            targets.push(Target::deserialise(data)?);
         }
 
-        Round {
+        Ok(Round {
             name,
             targets,
-        }
+        })
     }
 }
 
@@ -102,8 +100,8 @@ struct Target {
     ends: Vec<End>,
 }
 
-impl Serialisable for Target {
-    fn serialise(&self) -> Buffer {
+impl Serialisable<Target> for Target {
+    fn serialise(&self) -> Result<Buffer, BufferError> {
         let mut res = Buffer::new();
 
         res.append_string(&self.name);
@@ -116,33 +114,33 @@ impl Serialisable for Target {
 
         res.append_u32(self.inclination);
 
-        res.append_usize(self.ends.len());
+        res.append_usize(self.ends.len())?;
         for end in &self.ends {
-            res.append(&mut end.serialise());
+            res.append(&mut end.serialise()?);
         }
 
-        res
+        Ok(res)
     }
 
-    fn deserialise(data: &mut Buffer) -> Self {
-        let name = data.pop_string();
+    fn deserialise(data: &mut Buffer) -> Result<Self, BufferError> {
+        let name = data.pop_string()?;
 
-        let dist = data.pop_u32();
-        let dist_unit = data.pop_string();
+        let dist = data.pop_u32()?;
+        let dist_unit = data.pop_string()?;
 
-        let face = data.pop_u32();
-        let face_unit = data.pop_string();
+        let face = data.pop_u32()?;
+        let face_unit = data.pop_string()?;
 
-        let inclination = data.pop_u32();
+        let inclination = data.pop_u32()?;
 
         let mut ends = vec![];
-        let read = data.pop_usize();
+        let read = data.pop_usize()?;
 
         for _ in 0..read {
-            ends.push(End::deserialise(data));
+            ends.push(End::deserialise(data)?);
         }
 
-        Target {
+        Ok(Target {
             name,
             distance: dist,
             distance_unit: dist_unit,
@@ -150,7 +148,7 @@ impl Serialisable for Target {
             face_size_unit: face_unit,
             inclination,
             ends,
-        }
+        })
     }
 }
 
@@ -160,15 +158,15 @@ enum End {
     MeasuredEnd(Vec<MeasuredScore>),
 }
 
-impl Serialisable for End {
-    fn serialise(&self) -> Buffer {
-        match self {
+impl Serialisable<End> for End {
+    fn serialise(&self) -> Result<Buffer, BufferError> {
+        Ok(match self {
             End::ScoredEnd(ends) => {
                 let mut res = Buffer::from(vec![0]);
 
-                res.append_usize(ends.len());
+                res.append_usize(ends.len())?;
                 for score in ends {
-                    res.append(&mut score.serialise());
+                    res.append(&mut score.serialise()?);
                 }
 
                 res
@@ -176,25 +174,25 @@ impl Serialisable for End {
             End::MeasuredEnd(ends) => {
                 let mut res = Buffer::from(vec![1]);
 
-                res.append_usize(ends.len());
+                res.append_usize(ends.len())?;
                 for score in ends {
-                    res.append(&mut score.serialise());
+                    res.append(&mut score.serialise()?);
                 }
 
                 res
             },
-        }
+        })
     }
 
-    fn deserialise(data: &mut Buffer) -> Self {
-        let t = data.pop_u8();
-        match t {
+    fn deserialise(data: &mut Buffer) -> Result<Self, BufferError> {
+        let t = data.pop_u8()?;
+        Ok(match t {
             0 => {
                 let mut scores = vec![];
-                let read = data.pop_usize();
+                let read = data.pop_usize()?;
 
                 for _ in 0..read {
-                    let s = ValueScore::deserialise(data);
+                    let s = ValueScore::deserialise(data)?;
                     scores.push(s);
                 }
 
@@ -202,10 +200,10 @@ impl Serialisable for End {
             },
             1 => {
                 let mut scores = vec![];
-                let read = data.pop_usize();
+                let read = data.pop_usize()?;
 
                 for _ in 0..read {
-                    let s = MeasuredScore::deserialise(data);
+                    let s = MeasuredScore::deserialise(data)?;
                     scores.push(s);
                 }
 
@@ -214,7 +212,7 @@ impl Serialisable for End {
             other => {
                 panic!("unknown end type: {}", other)
             }
-        }
+        })
     }
 }
 
@@ -232,25 +230,25 @@ struct MeasuredScore {
     theta: u32
 }
 
-impl Serialisable for ValueScore {
-    fn serialise(&self) -> Buffer {
+impl Serialisable<ValueScore> for ValueScore {
+    fn serialise(&self) -> Result<Buffer, BufferError> {
         let mut res = Buffer::from(vec![self.value]);
 
         res.append_string(&self.value_name);
 
-        res
+        Ok(res)
     }
 
-    fn deserialise(data: &mut Buffer) -> Self {
-        Self {
-            value: data.pop_u8(),
-            value_name: data.pop_string(),
-        }
+    fn deserialise(data: &mut Buffer) -> Result<Self, BufferError> {
+        Ok(Self {
+            value: data.pop_u8()?,
+            value_name: data.pop_string()?,
+        })
     }
 }
 
-impl Serialisable for MeasuredScore {
-    fn serialise(&self) -> Buffer {
+impl Serialisable<MeasuredScore> for MeasuredScore {
+    fn serialise(&self) -> Result<Buffer, BufferError> {
         let mut res = Buffer::from(vec![self.value]);
 
         res.append_string(&self.value_name);
@@ -258,16 +256,16 @@ impl Serialisable for MeasuredScore {
         res.append_u32(self.r);
         res.append_u32(self.theta);
 
-        res
+        Ok(res)
     }
 
-    fn deserialise(data: &mut Buffer) -> Self {
-        Self {
-            value: data.pop_u8(),
-            value_name: data.pop_string(),
-            r: data.pop_u32(),
-            theta: data.pop_u32(),
-        }
+    fn deserialise(data: &mut Buffer) -> Result<Self, BufferError> {
+        Ok(Self {
+            value: data.pop_u8()?,
+            value_name: data.pop_string()?,
+            r: data.pop_u32()?,
+            theta: data.pop_u32()?,
+        })
     }
 }
 
@@ -289,7 +287,7 @@ fn main() {
         ]
     );
 
-    let mut data = e.serialise();
+    let mut data = e.serialise().unwrap();
     println!("data: {:?}", data);
     println!("deserialised: {:?}", End::deserialise(&mut data));
 
@@ -300,7 +298,7 @@ fn main() {
         theta: 8,
     };
 
-    println!("{:?}", MeasuredScore::deserialise(&mut s.serialise()))
+    println!("{:?}", MeasuredScore::deserialise(&mut s.serialise().unwrap()))
 }
 
 
@@ -361,7 +359,7 @@ mod tests {
             ],
         };
 
-        assert_eq!(s, Session::deserialise(&mut s.serialise()))
+        assert_eq!(s, Session::deserialise(&mut s.serialise().unwrap()).unwrap())
     }
 
     #[test]
@@ -371,7 +369,7 @@ mod tests {
             value_name: "seven".to_string(),
             r: 255,
             theta: 6000,
-        }.serialise();
+        }.serialise().unwrap();
         assert_eq!(
             data,
             vec![7, 5, 0, 115, 101, 118, 101, 110, 255, 0, 0, 0, 112, 23, 0, 0]
@@ -380,7 +378,7 @@ mod tests {
 
     #[test]
     fn test_measured_score_deserialise() {
-        let data = MeasuredScore::deserialise(&mut Buffer::from(vec![7, 5, 0, 115, 101, 118, 101, 110, 255, 0, 0, 0, 112, 23, 0, 0]));
+        let data = MeasuredScore::deserialise(&mut Buffer::from(vec![7, 5, 0, 115, 101, 118, 101, 110, 255, 0, 0, 0, 112, 23, 0, 0])).unwrap();
         let s = MeasuredScore {
             value: 7,
             value_name: "seven".to_string(),
@@ -398,7 +396,7 @@ mod tests {
         let data = ValueScore {
             value: 7,
             value_name: "seven".to_string(),
-        }.serialise();
+        }.serialise().unwrap();
         assert_eq!(
             data,
             vec![7, 5, 0, 115, 101, 118, 101, 110]
@@ -407,7 +405,7 @@ mod tests {
 
     #[test]
     fn test_value_score_deserialise() {
-        let data = ValueScore::deserialise(&mut Buffer::from(vec![7, 5, 0, 115, 101, 118, 101, 110]));
+        let data = ValueScore::deserialise(&mut Buffer::from(vec![7, 5, 0, 115, 101, 118, 101, 110])).unwrap();
         let s = ValueScore {
             value: 7,
             value_name: "seven".to_string(),
@@ -439,7 +437,7 @@ mod tests {
                 r: 1500,
                 theta: 50,
             }
-        ] ).serialise();
+        ] ).serialise().unwrap();
         assert_eq!(
             data,
             vec![1, 3, 0,
@@ -459,7 +457,7 @@ mod tests {
                         6, 3, 0, 115, 105, 120, 232, 3, 0, 0, 184, 11, 0, 0,
                         5, 4, 0, 102, 105, 118, 101, 220, 5, 0, 0, 50, 0, 0, 0,
                 ]
-            ));
+            )).unwrap();
         let s = End::MeasuredEnd( vec![
             MeasuredScore {
                 value: 7,
@@ -500,7 +498,7 @@ mod tests {
                 value: 5,
                 value_name: "five".to_string(),
             }
-        ] ).serialise();
+        ] ).serialise().unwrap();
         assert_eq!(
             data,
             vec![0, 3, 0,
@@ -520,7 +518,7 @@ mod tests {
                         6, 3, 0, 115, 105, 120,
                         5, 4, 0, 102, 105, 118, 101,
                 ]
-            ));
+            )).unwrap();
         let s = End::ScoredEnd( vec![
             ValueScore {
                 value: 7,
