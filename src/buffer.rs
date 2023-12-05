@@ -1,16 +1,17 @@
+use std::error::Error;
 use std::string::FromUtf8Error;
 
 #[derive(Debug, Clone)]
 pub enum BufferError {
-    BufferEmptyError,
-    InvalidUtf8StringError(FromUtf8Error),
-    TryIntoError,
-    UsizeTooBigError,
+    BufferEmpty,
+    InvalidUtf8String(FromUtf8Error),
+    TryInto,
+    UsizeTooBig,
 }
 
 fn usize_as_u16_as_bytes(len: usize) -> Result<Vec<u8>, BufferError> {
     if len > u16::MAX as usize {
-        Err(BufferError::UsizeTooBigError)
+        Err(BufferError::UsizeTooBig)
     } else {
         Ok((len as u16).to_le_bytes().to_vec())
     }
@@ -51,10 +52,11 @@ impl Buffer {
         Ok(())
     }
 
-    pub fn append_string(&mut self, str: &String) {
+    pub fn append_string(&mut self, str: &String) -> Result<(), BufferError> {
         let b = str.as_bytes();
-        self.append_usize(b.len());
+        self.append_usize(b.len())?;
         self.v.extend_from_slice(b);
+        Ok(())
     }
 
     pub fn append(&mut self, b: &mut Buffer) {
@@ -79,8 +81,8 @@ impl Buffer {
         for i in 0..n {
             let ob = self.v.get(i);
             match ob {
-                None => return Err(BufferError::BufferEmptyError),
-                Some(b) => self.v.push(*b),
+                None => return Err(BufferError::BufferEmpty),
+                Some(b) => res.push(*b),
             }
         }
         self.v = self.v.split_at(res.len()).1.to_vec();
@@ -89,42 +91,30 @@ impl Buffer {
 
     pub fn pop_usize(&mut self) -> Result<usize, BufferError> {
         let bytes = self.pop_n_bytes(2)?;
-        match bytes.try_into() {
-            Ok(val) => Ok(u16::from_le_bytes(val) as usize),
-            Err(e) => Err(BufferError::TryIntoError),
-        }
+        Ok(u16::from_le_bytes(bytes.try_into().unwrap()) as usize)
     }
 
     pub fn pop_string(&mut self) -> Result<String, BufferError> {
         let len = self.pop_usize()?;
         match String::from_utf8(self.pop_n_bytes(len)?) {
             Ok(str) => Ok(str),
-            Err(e) => Err(BufferError::InvalidUtf8StringError(e)),
+            Err(e) => Err(BufferError::InvalidUtf8String(e)),
         }
     }
 
     pub fn pop_u32(&mut self) -> Result<u32, BufferError> {
         let bytes = self.pop_n_bytes(4)?;
-        match bytes.try_into() {
-            Ok(val) => Ok(u32::from_le_bytes(val)),
-            Err(e) => Err(BufferError::TryIntoError),
-        }
+        Ok(u32::from_le_bytes(bytes.try_into().unwrap()))
     }
 
     pub fn pop_f32(&mut self) -> Result<f32, BufferError> {
         let bytes = self.pop_n_bytes(4)?;
-        match bytes.try_into() {
-            Ok(val) => Ok(f32::from_le_bytes(val)),
-            Err(e) => Err(BufferError::TryIntoError),
-        }
+        Ok(f32::from_le_bytes(bytes.try_into().unwrap()))
     }
 
     pub fn pop_u8(&mut self) -> Result<u8, BufferError> {
         let bytes = self.pop_n_bytes(1)?;
-        match bytes.try_into() {
-            Ok(val) => Ok(u8::from_le_bytes(val)),
-            Err(e) => Err(BufferError::TryIntoError),
-        }
+        Ok(u8::from_le_bytes(bytes.try_into().unwrap()))
     }
 }
 
@@ -135,7 +125,7 @@ mod buffer_tests {
     #[test]
     fn test_buffer_usize() {
         let mut buf = Buffer::new();
-        buf.append_usize(5);
+        buf.append_usize(5).unwrap();
 
         assert_eq!(5, buf.pop_usize().unwrap());
     }
