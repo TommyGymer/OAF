@@ -2,7 +2,9 @@
 name = "oaf"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license-file = "LICENSE"
+description = "An open source binary file format for archery scoring"
+repository = "https://github.com/TommyGymer/OAF"
+readme = "README.md"
 
 [dependencies]
