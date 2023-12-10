@@ -4,7 +4,9 @@ mod buffer;
 use crate::buffer::{Buffer, BufferError};
 
 trait Serialisable<T> {
+    /// Returns a Buffer containing self as bytes
     fn serialise(&self) -> Result<Buffer, BufferError>;
+    /// Returns a copy of self built from the bytes in the provided Buffer
     fn deserialise(data: &mut Buffer) -> Result<T, BufferError>;
 }
 

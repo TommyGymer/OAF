@@ -7,6 +7,7 @@ pub enum BufferError {
     UsizeTooBig,
 }
 
+/// Internal method for converting the lower two bytes of a usize to a Vec<u8>
 fn usize_as_u16_as_bytes(len: usize) -> Result<Vec<u8>, BufferError> {
     if len > u16::MAX as usize {
         Err(BufferError::UsizeTooBig)
@@ -33,18 +34,21 @@ impl PartialEq<Vec<u8>> for Buffer {
 }
 
 impl Buffer {
+    /// Returns a Buffer with an empty underlying Vec<u8>
     pub fn new() -> Buffer {
         Buffer {
             v: vec!(),
         }
     }
 
+    /// Returns a Buffer with the provided Vec<u8> as the underlying structure
     pub fn from(v: Vec<u8>) -> Buffer{
         Buffer {
             v,
         }
     }
 
+    /// Appends the lower two bytes of the given usize to the Buffer
     pub fn append_usize(&mut self, len: usize) -> Result<(), BufferError> {
         self.v.append(&mut usize_as_u16_as_bytes(len)?);
         Ok(())
