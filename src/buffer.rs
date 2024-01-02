@@ -42,10 +42,18 @@ impl Buffer {
     }
 
     /// Returns a Buffer with the provided Vec<u8> as the underlying structure
-    pub fn from(v: Vec<u8>) -> Buffer{
+    pub fn from(v: Vec<u8>) -> Buffer {
         Buffer {
             v,
         }
+    }
+
+    pub fn length(&self) -> usize {
+        self.v.len()
+    }
+
+    pub fn take_underlying_buffer(self) -> Vec<u8> {
+        self.v
     }
 
     /// Appends the lower two bytes of the given usize to the Buffer
@@ -65,7 +73,15 @@ impl Buffer {
         self.v.append(&mut b.v);
     }
 
+    pub fn append_u16(&mut self, n: u16) {
+        self.v.extend_from_slice(&n.to_le_bytes());
+    }
+
     pub fn append_u32(&mut self, n: u32) {
+        self.v.extend_from_slice(&n.to_le_bytes());
+    }
+
+    pub fn append_u64(&mut self, n: u64) {
         self.v.extend_from_slice(&n.to_le_bytes());
     }
 
@@ -104,9 +120,19 @@ impl Buffer {
         }
     }
 
+    pub fn pop_u16(&mut self) -> Result<u16, BufferError> {
+        let bytes = self.pop_n_bytes(2)?;
+        Ok(u16::from_le_bytes(bytes.try_into().unwrap()))
+    }
+
     pub fn pop_u32(&mut self) -> Result<u32, BufferError> {
         let bytes = self.pop_n_bytes(4)?;
         Ok(u32::from_le_bytes(bytes.try_into().unwrap()))
+    }
+
+    pub fn pop_u64(&mut self) -> Result<u64, BufferError> {
+        let bytes = self.pop_n_bytes(8)?;
+        Ok(u64::from_le_bytes(bytes.try_into().unwrap()))
     }
 
     pub fn pop_f32(&mut self) -> Result<f32, BufferError> {
