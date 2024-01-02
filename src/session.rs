@@ -1,9 +1,10 @@
 use std::fs::File;
-use std::io::Write;
+use std::hash::{Hash, Hasher};
+use std::io::{self, Read, Write};
 // structs should implement the Binary trait
 use crate::buffer::{Buffer, BufferError};
 
-pub trait Serialisable<T> {
+trait Serialisable<T> {
     /// Returns a Buffer containing self as bytes
     fn serialise(&self) -> Result<Buffer, BufferError>;
     /// Returns a copy of self built from the bytes in the provided Buffer
@@ -19,14 +20,26 @@ pub struct Session {
     pub rounds: Vec<Round>,
 }
 
-#[derive(Debug, Clone)]
-enum EncodingError {
+#[derive(Debug)]
+pub enum FileError {
     BufferError(BufferError),
-    WritingError(std::io::Error),
+    IOError(io::Error),
+}
+
+impl From<BufferError> for FileError {
+    fn from(err: BufferError) -> Self {
+        Self::BufferError(err)
+    }
+}
+
+impl From<io::Error> for FileError {
+    fn from(err: io::Error) -> Self {
+        Self::IOError(err)
+    }
 }
 
 impl Session {
-    fn encode(&self, filename: String) -> Result<(), EncodingError> {
+    pub fn encode(&self, filename: String) -> Result<(), FileError> {
         let mut res = Buffer::new();
 
         // Magic bytes: 4F 41 46 46 (OAFF)
@@ -40,32 +53,34 @@ impl Session {
         res.append_u8(1); // 1
         res.append_u8(0); // 0
 
-        match self.serialise() {
-            Ok(mut data) => {
-                res.append_u64(data.length() as u64);
-                res.append(&mut data);
-            },
-            Err(err) => {
-              return Err(EncodingError::BufferError(err));
-            },
-        }
+        let mut data = self.serialise()?;
 
-        let mut f = match File::create(filename) {
-            Ok(f) => {
-                f
-            }
-            Err(err) => {
-                return Err(EncodingError::WritingError(err));
-            }
-        };
-        match f.write_all(&*res.take_underlying_buffer()) {
-            Ok(()) => {
-                Ok(())
-            }
-            Err(err) => {
-                Err(EncodingError::WritingError(err))
-            }
-        }
+        res.append_u64(data.length() as u64);
+        res.append(&mut data);
+
+        let mut f = File::create(filename)?;
+        Ok(f.write_all(res.take_underlying_buffer().as_slice())?)
+    }
+
+    pub fn decode(filename: String) -> Result<Self, FileError> {
+        let mut f = File::open(filename)?;
+
+        let mut data = vec![];
+
+        f.read_to_end(&mut data)?;
+
+        let mut buf = Buffer::from(data);
+        buf.pop_n_bytes(4)?;
+
+        let v1 = buf.pop_u8()?;
+        let v2 = buf.pop_u8()?;
+        let v3 = buf.pop_u8()?;
+
+        println!("Encoded with v{v1}.{v2}.{v3}");
+
+        println!("Session has length {:?}", buf.pop_u64()?);
+
+        Ok(Session::deserialise(&mut buf)?)
     }
 }
 
@@ -323,10 +338,22 @@ impl Serialisable<End> for End {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq)]
 pub struct ValueScore {
     pub value: u8,
     pub value_name: String,
+}
+
+impl PartialEq for ValueScore {
+    fn eq(&self, other: &Self) -> bool {
+        self.value_name == other.value_name
+    }
+}
+
+impl Hash for ValueScore {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write(self.value_name.as_bytes())
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -404,6 +431,51 @@ impl Serialisable<BareShaft> for BareShaft {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_files() {
+        let s = Session {
+            date: "2024-01-02".to_string(),
+            location: "Home".to_string(),
+            rounds: vec![
+                Round {
+                    name: "Portsmouth".to_string(),
+                    targets: vec![
+                        Target {
+                            name: "WA 60cm Indoor".to_string(),
+                            distance: 18,
+                            distance_unit: "m".to_string(),
+                            face_size: 60,
+                            face_size_unit: "cm".to_string(),
+                            inclination: 0,
+                            ends: vec![
+                                End::Scored(vec![
+                                    ValueScore {
+                                        value: 10,
+                                        value_name: "ten".to_string(),
+                                    },
+                                    ValueScore {
+                                        value: 10,
+                                        value_name: "ten".to_string(),
+                                    },
+                                    ValueScore {
+                                        value: 10,
+                                        value_name: "ten".to_string(),
+                                    },
+                                ])
+                            ],
+                        }
+                    ],
+                }
+            ],
+        };
+
+        s.encode("tmp.oaf".to_string()).unwrap();
+
+        let decoded_s = Session::decode("tmp.oaf".to_string()).unwrap();
+
+        assert_eq!(s, decoded_s)
+    }
 
     #[test]
     fn test_full() {
