@@ -1,3 +1,5 @@
+use std::fs::File;
+use std::io::Write;
 // structs should implement the Binary trait
 use crate::buffer::{Buffer, BufferError};
 
@@ -17,16 +19,53 @@ pub struct Session {
     pub rounds: Vec<Round>,
 }
 
-// Magic bytes: 4F 41 46 46 (OAFF)
-
 #[derive(Debug, Clone)]
 enum EncodingError {
     BufferError(BufferError),
+    WritingError(std::io::Error),
 }
 
 impl Session {
     fn encode(&self, filename: String) -> Result<(), EncodingError> {
-        Ok(())
+        let mut res = Buffer::new();
+
+        // Magic bytes: 4F 41 46 46 (OAFF)
+        res.append_u8(0x4f); // O
+        res.append_u8(0x41); // A
+        res.append_u8(0x46); // F
+        res.append_u8(0x46); // F
+
+        // Version: 0.1.0
+        res.append_u8(0); // 0
+        res.append_u8(1); // 1
+        res.append_u8(0); // 0
+
+        match self.serialise() {
+            Ok(mut data) => {
+                res.append_u64(data.length() as u64);
+                res.append(&mut data);
+            },
+            Err(err) => {
+              return Err(EncodingError::BufferError(err));
+            },
+        }
+
+        let mut f = match File::create(filename) {
+            Ok(f) => {
+                f
+            }
+            Err(err) => {
+                return Err(EncodingError::WritingError(err));
+            }
+        };
+        match f.write_all(&*res.take_underlying_buffer()) {
+            Ok(()) => {
+                Ok(())
+            }
+            Err(err) => {
+                Err(EncodingError::WritingError(err))
+            }
+        }
     }
 }
 
