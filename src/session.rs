@@ -338,22 +338,10 @@ impl Serialisable<End> for End {
     }
 }
 
-#[derive(Debug, Eq)]
+#[derive(Debug, PartialEq)]
 pub struct ValueScore {
     pub value: u8,
     pub value_name: String,
-}
-
-impl PartialEq for ValueScore {
-    fn eq(&self, other: &Self) -> bool {
-        self.value_name == other.value_name
-    }
-}
-
-impl Hash for ValueScore {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        state.write(self.value_name.as_bytes())
-    }
 }
 
 #[derive(Debug, PartialEq)]
