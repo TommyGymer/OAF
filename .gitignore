@@ -2,3 +2,4 @@
 .idea/modules.xml
 .idea/OAF.iml
 .idea/vcs.xml
+*.oaf
