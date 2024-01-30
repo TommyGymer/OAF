@@ -1,6 +1,6 @@
 [package]
 name = "open-archery-format"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license-file = "LICENSE"
 description = "An open source binary file format for archery scoring"
